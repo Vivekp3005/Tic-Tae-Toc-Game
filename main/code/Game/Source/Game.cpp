@@ -31,45 +31,34 @@ void Game::initialize(){
     for(int i=0;i<9;i++) board[i] = nullptr;
     for(int i=0;i<9;i++) board2[i] = 0;
 
-    possibleWinner;
-    corners[0] = 0;
-    corners[1] = 2;
-    corners[2] = 6;
-    corners[3] = 8;
-    sides[0] = 1;
-    sides[1] = 3;
-    sides[2] = 5;
-    sides[3] = 7;
-
     //Add Screen
     Bodies* B1 = new Bodies(0,0,WIDTH,HEIGHT,3,renderer);
     screen = B1;
 
     turnX = true;
+    moveIndex = 0;
 }
-#define compareBoxes(box1, box2, box3) ((board[box1] == board[box2]) && (board[box2] == board[box3]) && (board[box1] != 0)) //Checkes if three items are the same, and makes sure they're not 0's.
-#define numberToLetter(x) ((x > 0) ? (x == 1) ? 'X' : 'O' : ' ') //Takes the number and turns it into the letter or space.
+#define compareBoxes(box1, box2, box3) ((board[box1] == board[box2]) && (board[box2] == board[box3]) && (board[box1] != 0))
+#define numberToLetter(x) ((x > 0) ? (x == 1) ? 'X' : 'O' : ' ')
 
 int getWinner(int board[9]) {
-	//Finds winner of game, if there is no winner, returns 0.
 	int winner = 0;
 	for (int x = 0; x < 3; x++) {
-		if (compareBoxes(3*x, 3*x+1, 3*x+2)) { //Chekcs rows.
+		if (compareBoxes(3*x, 3*x+1, 3*x+2)) {
 			winner = board[3*x];
 			break;
-		} else if (compareBoxes(x, x+3, x+6)) { //Checks columns.
+		} else if (compareBoxes(x, x+3, x+6)) {
 			winner = board[x];
 			break;
 
-		} else if (compareBoxes(2*x, 4, 8-2*x) && (x < 2)) { //Checks diagonals. Doesn't check if x == 2.
+		} else if (compareBoxes(2*x, 4, 8-2*x) && (x < 2)) {
 			winner = board[4];
 			break;
 		}
 	}
 	return winner;
 }
-bool gameOver(int board[9]){
-	//Checks if game is over, and announces who won, or if it was a tie.
+bool gameOverFinal(int board[9]){
 	int winner = getWinner(board);
 	if (winner > 0) {
 		cout << numberToLetter(winner) << " wins!"<< endl;
@@ -80,68 +69,6 @@ bool gameOver(int board[9]){
 	}
 	cout << "Tie!\n\n";
 	return true;
-}
-
-int willWin(int board[9], int player) {
-	//Checks if a given player could win in the next plank.
-	for (int x = 0; x < 9; x++) {
-		int tempBoard[9];
-		memcpy(tempBoard, board, 36);
-		if (board[x] > 0) continue;
-		tempBoard[x] = player;
-		if(getWinner(tempBoard) == player) return x;
-	}
-	return -1;
-}
-
-int exceptionalCase(int board[9]) {
-	//Finds bords that are exceptions to how the algorithm works.
-	int cases[2][9] = {{1,0,0,0,2,0,0,0,1}, {0,1,0,1,2,0,0,0,0}}; //Boards that don't work with algorithm.
-	int answers[2][4] = {{3,3,3,3}, {2,8,6,0}};
-	int rotatedBoard[9] = {6,3,0,7,4,1,8,5,2};
-	int newBoard[9];
-	int tempBoard[9];
-	for(int x = 0; x < 9; x++) {
-		newBoard[x] = board[x];
-	}
-	for (int caseIndex = 0; caseIndex < 2; caseIndex++) {
-		for(int rotation = 0; rotation < 4; rotation++) {
-			for (int x = 0; x < 9; x++) 
-				tempBoard[x] = newBoard[x];
-			
-			int match = 0;
-			//Rotates board so it works with different versions of the same board.
-			for (int box = 0; box < 9; box++) {
-				newBoard[box] = tempBoard[rotatedBoard[box]];
-			}
-
-			for (int x = 0; x < 9; x++) {
-				if (newBoard[x] == cases[caseIndex][x]) match++;
-				else break;
-			}
-			if (match == 9) return answers[caseIndex][rotation];
-		}
-	}
-	return -1;
-}
-
-int getSpace(int board[9], int spaces[4]) {
-	//Gets a random corner or side that's not taken.
-	bool isSpaceEmpty = false;
-	int y;
-	for (int x = 0; x < 4; x++) {
-		if (board[spaces[x]] == 0) {
-			isSpaceEmpty = true;
-			break;
-		}
-	}
-	if (isSpaceEmpty) {
-		do {
-			y = rand() % 4;
-		} while (board[spaces[y]] != 0);
-		return spaces[y];
-	}
-	return -1;
 }
 
 void outputBoard(int board[9]) {
@@ -193,46 +120,130 @@ void fillBoard(int possibleWinner, Bodies* board[], SDL_Renderer* renderer) {
 
 }
 
+bool rowCrossed(int board[9]) { 
+	for (int i=0; i<3; i++) { 
+		if (board[3*i] == board[(3*i)+1] && 
+			board[(3*i)+1] == board[(3*i)+2] && 
+			board[3*i] != 0) 
+			return (true); 
+	} 
+	return(false); 
+} 
+
+bool columnCrossed(int board[9]) { 
+	for (int i=0; i<3; i++) { 
+		if (board[i] == board[3+i] && 
+			board[3+i] == board[6+i] && 
+			board[i] != 0) 
+			return (true); 
+	} 
+	return(false); 
+} 
+
+bool diagonalCrossed(int board[9]) { 
+	if (board[0] == board[4] && 
+		board[4] == board[8] && 
+		board[0] != 0) 
+		return(true); 
+		
+	if (board[2] == board[4] && 
+		board[4] == board[6] && 
+		board[2] != 0) 
+		return(true); 
+
+	return(false); 
+} 
+
+bool gameOver(int board[9]) { 
+	return(rowCrossed(board) || columnCrossed(board) || diagonalCrossed(board) ); 
+}
+
+int minimax(int board[9], int depth, bool isAI){
+	int score = 0;
+	int bestScore = 0;
+	if (gameOver(board) == true) {
+		if (isAI == true)
+			return -1;
+		if (isAI == false)
+			return +1;
+	}
+	else {
+		if(depth < 9) {
+			if(isAI == true) {
+				bestScore = -999;
+				for(int i=0; i<3; i++) {
+					for(int j=0; j<3; j++) {
+						if (board[(3*i)+j] == 0) {
+							board[(3*i)+j] = 2;
+							score = minimax(board, depth + 1, false);
+							board[(3*i)+j] = 0;
+							if(score > bestScore) {
+								bestScore = score;
+							}
+						}
+					}
+				}
+				return bestScore;
+			}
+			else {
+				bestScore = 999;
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < 3; j++) {
+						if (board[(3*i)+j] == 0) {
+							board[(3*i)+j] = 1;
+							score = minimax(board, depth + 1, true);
+							board[(3*i)+j] = 0;
+							if (score < bestScore) {
+								bestScore = score;
+							}
+						}
+					}
+				}
+				return bestScore;
+			}
+		}
+		else
+		{
+			return 0;
+		}
+	}
+}
+
+int bestMove(int board[9], int moveIndex){
+	int x = -1, y = -1;
+	int score = 0, bestScore = -999;
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			if (board[(3*i) + j] == 0) {
+				board[(3*i) + j] = 2;
+				score = minimax(board, moveIndex+1, false);
+				board[(3*i) + j] = 0;
+				if(score > bestScore) {
+					bestScore = score;
+					x = i;
+					y = j;
+				}
+			}
+		}
+	}
+	return x*3+y;
+}
+
 void Game::generateObs(){
     // Add Obstacle
     if(!turnX) {
-        if (gameOver(board2) > 0) {
+        if (gameOverFinal(board2) > 0) {
 			running = false;
             outputBoard(board2);
 		}
 
-        //Player O decides which move they'll do.
-	    bool good = false;
-	    for (int x = 2; x > 0; x--){
-	    	possibleWinner = willWin(board2, x);
-	    	if (possibleWinner != -1) {
-                fillBoard(possibleWinner, board, renderer);
-	    		board2[possibleWinner] = 2;
-	    		good = true;
-	    		break;
-	    	}
-	    }
-	    if (good);
-	    else if (board2[4] == 0) {
-            fillBoard(4,board, renderer);
-            board2[4] = 2; //Middle.
-        }
-	    else if (exceptionalCase(board2) > -1) {
-            fillBoard(exceptionalCase(board2),board, renderer); 
-            board2[exceptionalCase(board2)] = 2; //Exception board2s.
-        }
-	    else if (getSpace(board2, corners) != -1) {
-            fillBoard(getSpace(board2, corners), board, renderer);
-            board2[getSpace(board2, corners)] = 2; //Corners
-        }
-	    else {
-            fillBoard(getSpace(board2, sides), board, renderer);
-            board2[getSpace(board2, sides)] = 2; //Sides
-        }
+        int n = bestMove(board2, moveIndex);
+        fillBoard(n, board, renderer);
+		board2[n] = 2; 
+		turnX = true;
+        moveIndex++;
     
-        turnX = true;
-    
-        if(gameOver(board2)) {
+        if(gameOverFinal(board2)) {
             running = false;
             outputBoard(board2);
         }
@@ -255,6 +266,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[0] = body;
                     board2[0] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -264,6 +276,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[1] = body;
                     board2[1] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -273,6 +286,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[2] = body;
                     board2[2] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -282,6 +296,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[3] = body;
                     board2[3] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -291,6 +306,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[4] = body;
                     board2[4] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -300,6 +316,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[5] = body;
                     board2[5] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -309,6 +326,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[6] = body;
                     board2[6] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -318,6 +336,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[7] = body;
                     board2[7] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 
@@ -327,6 +346,7 @@ void Game::key_down(SDL_KeyboardEvent* event ){
                     board[8] = body;
                     board2[8] = 1;
                     turnX = false;
+                    moveIndex++;
                 }
                 break;
 

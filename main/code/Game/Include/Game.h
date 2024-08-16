@@ -16,8 +16,7 @@ class Game{
     int board2[9];
     bool running;
     int possibleWinner;
-    int corners[4];
-    int sides[4];
+    int moveIndex;
     Bodies* screen;
 
     private:
